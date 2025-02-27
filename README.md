@@ -55,3 +55,6 @@ This subworkflow should be usable for everyone and every pipeline wishing to do 
 ### pre/post deconvolution
 - split imae into channels
 - save as ome-tif(f)/ome-zarr
+
+# nf-core (long-term)
+Make it conform to fit to nf-core?
