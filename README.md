@@ -58,3 +58,4 @@ This subworkflow should be usable for everyone and every pipeline wishing to do 
 
 # nf-core (long-term)
 Make it conform to fit to nf-core?
+No standard parameters  yet but see https://github.com/nf-core/website/issues/1251 for some example
