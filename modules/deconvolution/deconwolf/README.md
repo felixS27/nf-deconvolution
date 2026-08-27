@@ -16,6 +16,15 @@ so the subworkflow can retry a failed GPU attempt on CPU by re-invoking
 with `gpu = false` — that retry branching lives at the subworkflow
 level, not in this module.
 
+On `gpu = true`, a failure whose exit status looks like an OOM kill or a
+scheduler timeout (`130..145`, or `104`) is retried up to `maxRetries`
+(3) with the same resources — `nextflow.config` doesn't exist yet to
+scale memory/time per `task.attempt`, so retries are not yet
+resource-escalated — then ignored so the subworkflow-level fallback can
+retry on CPU; any other GPU failure is ignored immediately. On
+`gpu = false` (the CPU fallback itself) errors terminate the run as
+usual — there's no further fallback.
+
 A process-local safety floor (`min_tile_size`, 128px) rejects
 `deconvolution_tile_size` values that would produce degenerate tiles.
 `XDG_CONFIG_HOME` is isolated per task so concurrent SLURM tasks don't

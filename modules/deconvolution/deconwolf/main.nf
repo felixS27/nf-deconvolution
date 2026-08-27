@@ -13,13 +13,27 @@
  * failed GPU attempt on CPU by re-invoking with gpu = false — the retry
  * branching itself lives at the subworkflow level, not here.
  * XDG_CONFIG_HOME is isolated per task so concurrent SLURM tasks don't
- * race on deconwolf's cache directory.
+ * race on deconwolf's cache directory. meta.internal_id (set by the
+ * subworkflow to distinguish per-channel/time/scene rows sharing one
+ * meta.id) is used for tag when present, falling back to meta.id.
+ * On gpu=true, a failure with an OOM/timeout-shaped exit status is
+ * retried (same resources — nextflow.config doesn't exist yet to scale
+ * memory/time per task.attempt; TODO once it does) up to maxRetries,
+ * then ignored so the subworkflow-level fallback can retry on CPU. Any
+ * other GPU failure is ignored immediately. gpu=false (the CPU fallback
+ * itself) uses default error handling — there's no further fallback.
  */
 
 process DECONWOLF {
-    tag "$meta.id"
-    label 'process_high'
+    tag "${meta.internal_id ?: meta.id}"
     container 'TODO: add container image address'
+
+    errorStrategy {
+        if (!gpu) return 'terminate'
+        def resource_failure = (task.exitStatus in 130..145) || task.exitStatus == 104
+        (resource_failure && task.attempt <= task.maxRetries) ? 'retry' : 'ignore'
+    }
+    maxRetries 3
 
     input:
     tuple val(meta), path(image), val(gpu)
