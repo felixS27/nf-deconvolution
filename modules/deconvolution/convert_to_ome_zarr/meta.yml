@@ -1,0 +1,27 @@
+name: deconvolution/convert_to_ome_zarr
+version: 1.0.0
+description: Stack per-channel/per-timepoint deconvolved TIFFs into one OME-Zarr image per dataset_id/scene
+license: Apache-2.0
+input:
+- - name: meta
+    type: map
+    description: >-
+      Groovy map with group-level metadata, e.g. `[id: dataset_id, scene: 0,
+      physical_voxel_size_xy_nm: 65.0, physical_voxel_size_z_nm: 300.0]`. One
+      group per (dataset_id, scene) — every channel/time point belonging to
+      that scene is combined into a single OME-Zarr.
+  - name: items
+    type: list
+    description: >-
+      List of maps, one per entry in `tifs` (same order), each
+      `[channel_index: int, time_index: int, emission: nm]` — used to build
+      the manifest CSV the python script reads to place each TIFF correctly.
+  - name: tifs
+    type: file
+    description: Deconvolved 3D (ZYX) TIFFs for this dataset_id/scene, one per channel/time point, e.g. from the deconwolf module
+output:
+- - name: meta
+    type: map
+    description: Groovy map with group-level metadata, matching the input `meta`
+  - type: file
+    description: OME-Zarr image (CZYX, or TCZYX when more than one time point is present) for this dataset_id/scene
