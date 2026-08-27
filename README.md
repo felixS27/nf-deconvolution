@@ -80,12 +80,10 @@ Nothing needs to be changed here, except you want to run it on purely GPU or CPU
 ### Run the module
 The following steps written for EMBL HD HPC, but can be similarly adapted for other HPCs or put in a single SLURM script.
 
-1. Make directory for downloading apptainer
+1. Make directory for downloading apptainer images (the cache location itself is set in `nextflow.config`'s `apptainer.cacheDir`, no need to `export APPTAINER_CACHEDIR` manually)
 
 ``` bash
-cd /scratch/$USER
-mkdir -p .apptainer_cache
-export APPTAINER_CACHEDIR=/scratch/$USER/nf-deconvolution/.apptainer_cache
+mkdir -p /scratch/$USER/apptainer_cache
 ```
 
 2. Load nextflow (this maybe different on each system)
