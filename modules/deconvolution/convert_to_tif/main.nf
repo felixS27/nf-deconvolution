@@ -5,13 +5,14 @@
  * TIFF per requested time point, for a single channel (meta.channel_index)
  * — the channel matching the emission wavelength already fixed for this
  * task's meta — and writes a manifest CSV
- * (res_x,res_y,res_z,dim_z,filepath) listing every TIFF produced, for
- * consumption by the deconwolf module.
+ * (res_x,res_y,res_z,dim_z,channel_index,time_index,scene,filepath)
+ * listing every TIFF produced, for consumption by the deconwolf module
+ * and the subworkflow (channel_index/time_index/scene let it key each
+ * row without parsing the tif filename).
  */
 
 process CONVERT_TO_TIF {
     tag "$meta.id"
-    label 'process_low'
     container 'TODO: add container image address'
 
     input:
@@ -33,9 +34,10 @@ process CONVERT_TO_TIF {
     """
 
     stub:
+    def stub_tif = "${meta.id}_T0_C${meta.channel_index}.tif"
     """
-    touch ${meta.id}_T0_C0.tif
-    echo "res_x,res_y,res_z,dim_z,filepath" > ${meta.id}_deconvolution_input.csv
-    echo "0.0,0.0,0.0,2,\$PWD/${meta.id}_T0_C0.tif" >> ${meta.id}_deconvolution_input.csv
+    touch ${stub_tif}
+    echo "res_x,res_y,res_z,dim_z,channel_index,time_index,scene,filepath" > ${meta.id}_deconvolution_input.csv
+    echo "0.0,0.0,0.0,2,${meta.channel_index},0,${meta.scene ?: 0},\$PWD/${stub_tif}" >> ${meta.id}_deconvolution_input.csv
     """
 }

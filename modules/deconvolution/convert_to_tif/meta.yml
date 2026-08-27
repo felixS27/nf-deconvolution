@@ -26,4 +26,4 @@ output:
     type: map
     description: Groovy map with image metadata, matching the input `meta`
   - type: file
-    description: Manifest CSV (res_x,res_y,res_z,dim_z,filepath) listing every 3D TIFF written, one row per time point (single channel) — res_x/res_y/res_z are pixel sizes in nm, dim_z is the z-plane count
+    description: Manifest CSV (res_x,res_y,res_z,dim_z,channel_index,time_index,scene,filepath) listing every 3D TIFF written, one row per time point (single channel) — res_x/res_y/res_z are pixel sizes in nm, dim_z is the z-plane count, channel_index/time_index/scene identify the row
