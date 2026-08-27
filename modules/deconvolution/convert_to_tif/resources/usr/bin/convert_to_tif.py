@@ -33,6 +33,8 @@ class Converter:
             Write one 3D TIFF per requested time point, for a single channel.
     """
 
+    BIGTIFF_THRESHOLD_GB = 4.0
+
     def __init__(self,
                  dataset_id: str,
                  filepath: str,
@@ -80,10 +82,11 @@ class Converter:
         out_path = self._output_path(t, multi_scene=False)
         shutil.copy(self.filepath, out_path)
         print(f"Copied already-3D TIFF to {out_path}", flush=True)
-        return self._manifest_row(out_path, pixel_sizes, dim_z)
+        return self._manifest_row(out_path, pixel_sizes, dim_z, t)
 
     def _write_tif(self, img: BioImage, t: int, multi_scene: bool, pixel_sizes) -> dict:
-        data = img.get_image_dask_data("ZYX", T=t, C=self.channel_index).astype("float32")
+        data = img.get_image_dask_data("ZYX", T=t, C=self.channel_index).astype("float32").compute()
+        use_bigtiff = data.nbytes / (1024**3) >= self.BIGTIFF_THRESHOLD_GB
 
         resolution = None
         metadata = {"axes": "ZYX"}
@@ -94,24 +97,29 @@ class Converter:
             metadata["spacing"] = pixel_sizes.Z
 
         out_path = self._output_path(t, multi_scene)
-        imwrite(out_path, data.compute(), imagej=True, resolution=resolution, metadata=metadata)
+        imwrite(out_path, data, imagej=False, resolution=resolution, metadata=metadata, bigtiff=use_bigtiff)
         print(f"Converted image has been saved at {out_path}", flush=True)
-        return self._manifest_row(out_path, pixel_sizes, img.dims.Z)
+        return self._manifest_row(out_path, pixel_sizes, img.dims.Z, t)
 
-    @staticmethod
-    def _manifest_row(out_path: Path, pixel_sizes, dim_z: int) -> dict:
+    def _manifest_row(self, out_path: Path, pixel_sizes, dim_z: int, t: int) -> dict:
         return {
             "res_x": pixel_sizes.X*1000,  # convert from um to nm
             "res_y": pixel_sizes.Y*1000,  # convert from um to nm
             "res_z": pixel_sizes.Z*1000,  # convert from um to nm
             "dim_z": dim_z,
+            "channel_index": self.channel_index,
+            "time_index": t,
+            "scene": self.scene,
             "filepath": str(out_path),
         }
 
     def _write_manifest(self, rows: list) -> None:
         manifest_path = Path.cwd() / f"{self.dataset_id}_deconvolution_input.csv"
         with open(manifest_path, "w", newline="") as manifest_file:
-            writer = csv.DictWriter(manifest_file, fieldnames=["res_x", "res_y", "res_z", "dim_z", "filepath"])
+            writer = csv.DictWriter(manifest_file, fieldnames=[
+                "res_x", "res_y", "res_z", "dim_z",
+                "channel_index", "time_index", "scene", "filepath",
+            ])
             writer.writeheader()
             writer.writerows(rows)
         print(f"Manifest written to {manifest_path}", flush=True)
