@@ -95,11 +95,8 @@ class Converter:
         data = img.get_image_dask_data("ZYX", T=t, C=self.channel_index).astype("float32").compute()
         use_bigtiff = data.nbytes / (1024**3) >= self.BIGTIFF_THRESHOLD_GB
 
-        resolution = (1 / pixel_sizes.X, 1 / pixel_sizes.Y)
-        metadata = {"axes": "ZYX", "unit": "um", "spacing": pixel_sizes.Z}
-
         out_path = self._output_path(t, multi_scene)
-        imwrite(out_path, data, imagej=False, resolution=resolution, metadata=metadata, bigtiff=use_bigtiff)
+        imwrite(out_path, data, imagej=False, metadata={"axes": "ZYX"}, bigtiff=use_bigtiff)
         print(f"Converted image has been saved at {out_path}", flush=True)
         return self._manifest_row(out_path, pixel_sizes, img.dims.Z, t)
 
