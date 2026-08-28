@@ -14,6 +14,8 @@ import shutil
 from pathlib import Path
 from typing import Optional
 
+import bioio_ome_tiff
+import bioio_tifffile
 from bioio import BioImage
 from tifffile import imwrite
 
@@ -47,9 +49,18 @@ class Converter:
         self.scene = scene
         self.time_indices = time_indices
 
+    def _select_reader(self) -> Optional[type]:
+        """Pick the bioio reader plugin explicitly for OME-TIFF vs plain TIFF."""
+        name = self.filepath.name.lower()
+        if name.endswith((".ome.tif", ".ome.tiff")):
+            return bioio_ome_tiff.Reader
+        if name.endswith((".tif", ".tiff")):
+            return bioio_tifffile.Reader
+        return None
+
     def convert(self) -> None:
         """Write one 3D TIFF per requested time point, for a single channel."""
-        img = BioImage(self.filepath)
+        img = BioImage(self.filepath, reader=self._select_reader())
         img.set_scene(self.scene)
 
         if img.dims.Z <= 1:

@@ -16,6 +16,7 @@ from pathlib import Path
 import dask.array as da
 import numpy as np
 from bioio import BioImage
+import bioio_tifffile
 from bioio_ome_zarr.writers import Channel, OMEZarrWriter
 
 TIME_INDEX_PATTERN = re.compile(r"_T(\d+)_C\d+")
@@ -82,8 +83,8 @@ class Assembler:
     def _stack(tifs: list) -> tuple:
         """Stacks time points as tzyx, dropping the t axis when there's a single time point."""
         if len(tifs) == 1:
-            return BioImage(tifs[0]).get_image_dask_data("ZYX"), ["z", "y", "x"]
-        time_points = [BioImage(tif).get_image_dask_data("ZYX") for tif in tifs]
+            return BioImage(tifs[0],reader=bioio_tifffile.Reader).get_image_dask_data("ZYX"), ["z", "y", "x"]
+        time_points = [BioImage(tif,reader=bioio_tifffile.Reader).get_image_dask_data("ZYX") for tif in tifs]
         return da.stack(time_points, axis=0), ["t", "z", "y", "x"]
 
     @staticmethod
