@@ -38,7 +38,6 @@ workflow DECONVOLUTION {
             }
         }
 
-    
     if (params.deconvolution_with_gpu.toString().toBoolean()) {
         ch_gpu_input = ch_deconwolf_input.map { meta, tif -> tuple(meta, file(tif), true) }
         DECONWOLF_GPU(ch_gpu_input)

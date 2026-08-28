@@ -18,12 +18,11 @@ level, not in this module.
 
 On `gpu = true`, a failure whose exit status looks like an OOM kill or a
 scheduler timeout (`130..145`, or `104`) is retried up to `maxRetries`
-(3) with the same resources — `nextflow.config` doesn't exist yet to
-scale memory/time per `task.attempt`, so retries are not yet
-resource-escalated — then ignored so the subworkflow-level fallback can
-retry on CPU; any other GPU failure is ignored immediately. On
-`gpu = false` (the CPU fallback itself) errors terminate the run as
-usual — there's no further fallback.
+(3), with memory/time scaled per `task.attempt` via the
+`withName: 'DECONWOLF_GPU'` block in `nextflow.config`, then ignored so
+the subworkflow-level fallback can retry on CPU; any other GPU failure is
+ignored immediately. On `gpu = false` (the CPU fallback itself) errors
+terminate the run as usual — there's no further fallback.
 
 A process-local safety floor (`min_tile_size`, 128px) rejects
 `deconvolution_tile_size` values that would produce degenerate tiles.
@@ -43,12 +42,13 @@ include { DECONWOLF } from 'deconvolution/deconwolf'
 ## Optional flags
 
 `--float`, `--bq`, and `--scale` aren't per-image/validated inputs, so
-they're set via `task.ext` (a `withName: 'DECONWOLF'` config block)
-rather than `params`:
+they're set via `task.ext` (the `withName: 'DECONWOLF_GPU'` /
+`'DECONWOLF_CPU'` config blocks — this process is included twice under
+those aliases) rather than `params`:
 
 ```nextflow
 process {
-    withName: 'DECONWOLF' {
+    withName: 'DECONWOLF_GPU' {
         ext.float = true   // write float32 output instead of the dw default
         ext.bq    = 2      // boundary quality; defaults to 2 if unset
         ext.scale = 1.5    // must be > 0, otherwise omitted

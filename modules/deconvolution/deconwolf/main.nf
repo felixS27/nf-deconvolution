@@ -18,16 +18,17 @@
  * meta.id) is used for tag when present, falling back to meta.id.
  * --float, --bq, and --scale are flat, run-level dw output-shaping
  * flags rather than per-image/validated inputs, so they're sourced from
- * task.ext (set per-process via a withName: 'DECONWOLF' config block),
- * not params: ext.float defaults to false (flag omitted), ext.bq
- * defaults to 2, and ext.scale is only passed through when > 0
- * (0/negative/unset all omit --scale silently).
+ * task.ext (set per-process via the withName: 'DECONWOLF_GPU' /
+ * 'DECONWOLF_CPU' config blocks — this process is included twice under
+ * those aliases), not params: ext.float defaults to false (flag
+ * omitted), ext.bq defaults to 2, and ext.scale is only passed through
+ * when > 0 (0/negative/unset all omit --scale silently).
  * On gpu=true, a failure with an OOM/timeout-shaped exit status is
- * retried (same resources — nextflow.config doesn't exist yet to scale
- * memory/time per task.attempt; TODO once it does) up to maxRetries,
- * then ignored so the subworkflow-level fallback can retry on CPU. Any
- * other GPU failure is ignored immediately. gpu=false (the CPU fallback
- * itself) uses default error handling — there's no further fallback.
+ * retried up to maxRetries, with memory/time scaled per task.attempt via
+ * the withName: 'DECONWOLF_GPU' block in nextflow.config, then ignored
+ * so the subworkflow-level fallback can retry on CPU. Any other GPU
+ * failure is ignored immediately. gpu=false (the CPU fallback itself)
+ * uses default error handling — there's no further fallback.
  */
 
 process DECONWOLF {

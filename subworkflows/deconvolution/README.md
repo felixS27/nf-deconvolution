@@ -27,8 +27,8 @@ channel/time point belonging to one scene is combined by
 
 **Status:** all three stages are wired in, including the GPU/CPU branch,
 the GPU→CPU fallback, and the channel/scene regrouping ahead of
-`convert_to_ome_zarr`. `params.deconvolution_with_gpu` has no effect until
-a top-level `params.config` defining it exists (see `CLAUDE.md`).
+`convert_to_ome_zarr`. `params.deconvolution_with_gpu` is defined in
+`nextflow.config` (default `true`).
 
 ## Get started
 

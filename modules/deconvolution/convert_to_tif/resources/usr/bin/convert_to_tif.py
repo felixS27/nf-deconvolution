@@ -63,6 +63,13 @@ class Converter:
         time_indices = self.time_indices if self.time_indices is not None else list(range(img.dims.T))
         pixel_sizes = img.physical_pixel_sizes
 
+        if None in (pixel_sizes.X, pixel_sizes.Y, pixel_sizes.Z):
+            raise ValueError(
+                f"Image at {self.filepath} is missing physical pixel size metadata "
+                f"(X={pixel_sizes.X}, Y={pixel_sizes.Y}, Z={pixel_sizes.Z}); "
+                "deconwolf requires calibrated voxel size."
+            )
+
         rows = []
         if already_tif and len(time_indices) == 1 and img.dims.C == 1 and not multi_scene:
             rows.append(self._copy_through(time_indices[0], pixel_sizes, img.dims.Z))
@@ -88,13 +95,8 @@ class Converter:
         data = img.get_image_dask_data("ZYX", T=t, C=self.channel_index).astype("float32").compute()
         use_bigtiff = data.nbytes / (1024**3) >= self.BIGTIFF_THRESHOLD_GB
 
-        resolution = None
-        metadata = {"axes": "ZYX"}
-        if pixel_sizes.X and pixel_sizes.Y:
-            resolution = (1 / pixel_sizes.X, 1 / pixel_sizes.Y)
-            metadata["unit"] = "um"
-        if pixel_sizes.Z:
-            metadata["spacing"] = pixel_sizes.Z
+        resolution = (1 / pixel_sizes.X, 1 / pixel_sizes.Y)
+        metadata = {"axes": "ZYX", "unit": "um", "spacing": pixel_sizes.Z}
 
         out_path = self._output_path(t, multi_scene)
         imwrite(out_path, data, imagej=False, resolution=resolution, metadata=metadata, bigtiff=use_bigtiff)
