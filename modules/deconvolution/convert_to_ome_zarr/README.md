@@ -2,19 +2,18 @@
 
 ## Summary
 
-Inverts `convert_to_tif`'s per-channel/per-timepoint split: stacks every
-deconvolved TIFF belonging to one `dataset_id`/`scene` into a single
-OME-Zarr image — CZYX, or TCZYX when more than one time point is present.
-Channel labels in the output's `omero` metadata are taken from each
-channel's emission wavelength. Physical voxel size (`meta.physical_voxel_size_xy_nm`/
-`_z_nm`, assumes square pixels) is written as the OME-Zarr scale transform,
-in micrometers. Writes a single resolution level — no multiscale pyramid.
+Inverts `convert_to_tif`'s per-timepoint split: stacks every deconvolved
+TIFF belonging to one `dataset_id`/`channel_index`/`scene` into a single
+OME-Zarr image — ZYX, or TZYX when more than one time point is present.
+Physical voxel size (`meta.physical_voxel_size_xy_nm`/`_z_nm`, assumes
+square pixels) is written as the OME-Zarr scale transform, in micrometers.
+Writes a single resolution level — no multiscale pyramid.
 
-The `items`/`tifs` alignment (which entry in `items` describes which file
-in `tifs`) is built by the `deconvolution` subworkflow's `groupTuple`; this
-module's `script:` writes that into a manifest CSV
-(`channel_index,time_index,emission,filepath`) for the python script to
-read, rather than parsing it back out of TIFF filenames.
+Grouping into one `(dataset_id, channel_index, scene)` set is done by the
+`deconvolution` subworkflow's `groupTuple`; this module then recovers each
+TIFF's time index directly from its filename (`_T<time>_C<channel>`,
+written by `convert_to_tif` and preserved through `dw`'s `dw_` prefix)
+rather than from separate per-tif metadata.
 
 ## Get started
 
