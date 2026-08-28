@@ -13,7 +13,7 @@
 
 process CONVERT_TO_OME_ZARR {
     tag "${meta.id}_C${meta.channel_index}_S${meta.scene}"
-    container 'TODO: add container image address'
+    container 'ghcr.io/felixs27/bioio:3.5.0'
 
     input:
     tuple val(meta), path(tifs)

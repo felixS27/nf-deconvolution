@@ -33,7 +33,7 @@
 
 process DECONWOLF {
     tag "${meta.internal_id ?: meta.id}"
-    container 'TODO: add container image address'
+    container 'ghcr.io/felixs27/deconwolf:0.4.6'
 
     errorStrategy {
         if (!gpu) return 'terminate'

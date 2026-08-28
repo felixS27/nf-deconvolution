@@ -13,7 +13,7 @@
 
 process CONVERT_TO_TIF {
     tag "$meta.id"
-    container 'TODO: add container image address'
+    container 'ghcr.io/felixs27/bioio:3.5.0'
 
     input:
     tuple val(meta), path(image)
