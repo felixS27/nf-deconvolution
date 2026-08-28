@@ -9,8 +9,8 @@ parameters, then deconvolves the input 3D TIFF with `dw`
 `--nslice`), and pixel size (`meta.physical_voxel_size_xy_nm` /
 `meta.physical_voxel_size_z_nm`, also from the manifest — lateral size
 assumes square pixels, so the manifest's `res_y` is not used) are all
-per-image; NA, refractive index, iterations, tile size, and boundary
-quality are shared across the run and come from params. GPU/CPU mode is
+per-image; NA, refractive index, iterations, and tile size are shared
+across the run and come from params. GPU/CPU mode is
 a third input tuple element (`gpu`), not a `meta` key or a global param,
 so the subworkflow can retry a failed GPU attempt on CPU by re-invoking
 with `gpu = false` — that retry branching lives at the subworkflow
@@ -38,6 +38,22 @@ Include this module in your Nextflow pipeline:
 
 ```nextflow
 include { DECONWOLF } from 'deconvolution/deconwolf'
+```
+
+## Optional flags
+
+`--float`, `--bq`, and `--scale` aren't per-image/validated inputs, so
+they're set via `task.ext` (a `withName: 'DECONWOLF'` config block)
+rather than `params`:
+
+```nextflow
+process {
+    withName: 'DECONWOLF' {
+        ext.float = true   // write float32 output instead of the dw default
+        ext.bq    = 2      // boundary quality; defaults to 2 if unset
+        ext.scale = 1.5    // must be > 0, otherwise omitted
+    }
+}
 ```
 
 ## Dependencies

@@ -56,9 +56,9 @@ process DECONWOLF {
         'echo "CUDA_VISIBLE_DEVICES=$CUDA_VISIBLE_DEVICES"\nnvidia-smi || echo "nvidia-smi unavailable"' : ""
     def gpu_args  = gpu ? "--gpu" : "--threads ${task.cpus}"
     def tile_args = params.deconvolution_tile_size ? "--tilesize ${params.deconvolution_tile_size}" : ""
-    def nslice    = meta.dim_z
+    def nslice    = "--nslice ${meta.dim_z}"
     def float_flag = task.ext.float ? '--float' : ''
-    def bq         = task.ext.bq != null ? task.ext.bq : 2
+    def bq         = task.ext.bq != null ? "--bq ${task.ext.bq}" : "--bq 2"
     def scale_flag = (task.ext.scale && task.ext.scale > 0) ? "--scale ${task.ext.scale}" : ''
     """
     ${gpu_diagnostics}
@@ -73,7 +73,7 @@ process DECONWOLF {
         --NA ${params.microscope_NA} \\
         --ni ${params.microscope_ni} \\
         --lambda ${meta.emission} \\
-        --nslice ${nslice} \\
+        ${nslice} \\
         --overwrite \\
         PSF.tif
 
@@ -81,7 +81,7 @@ process DECONWOLF {
         --iter ${params.deconvolution_iter} \\
         ${gpu_args} \\
         ${tile_args} \\
-        --bq ${bq} \\
+        ${bq} \\
         ${float_flag} \\
         ${scale_flag} \\
         --overwrite \\
