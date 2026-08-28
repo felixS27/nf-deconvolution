@@ -7,8 +7,7 @@
  */
 
 include { CONVERT_TO_TIF }             from '../../modules/deconvolution/convert_to_tif/main.nf'
-include { DECONWOLF as DECONWOLF_GPU } from '../../modules/deconvolution/deconwolf/main.nf'
-include { DECONWOLF as DECONWOLF_CPU } from '../../modules/deconvolution/deconwolf/main.nf'
+include { DECONWOLF as DECONWOLF_GPU ; DECONWOLF as DECONWOLF_CPU } from '../../modules/deconvolution/deconwolf/main.nf'
 include { CONVERT_TO_OME_ZARR }        from '../../modules/deconvolution/convert_to_ome_zarr/main.nf'
 
 workflow DECONVOLUTION {
@@ -22,75 +21,60 @@ workflow DECONVOLUTION {
     main:
     CONVERT_TO_TIF(ch_input)
 
-    // One manifest CSV row per time point; derive a per-row internal_id
-    // (dataset_id + whichever of channel/time/scene are available) from the
-    // manifest's own channel_index/time_index/scene columns so retries and
-    // joins below key on the individual tif, not the original per-channel
-    // meta. Kept separate from meta.id (the dataset id) rather than
-    // overwriting it, so the original dataset id survives downstream.
     ch_deconwolf_input = CONVERT_TO_TIF.out.deconvolution_input
         .flatMap { meta, manifest ->
             manifest.splitCsv(header: true).collect { row ->
-                def id_parts = [meta.id, "C${row.channel_index}", "T${row.time_index}"]
-                if (meta.containsKey('scene')) id_parts << "S${row.scene}"
+                def id_parts = [meta.id, "C${row.channel_index}", "T${row.time_index}",
+                                "S${row.scene}"]
                 def row_meta = meta + [
                     internal_id: id_parts.join('_'),
                     time_index: row.time_index.toInteger(),
                     dim_z: row.dim_z.toInteger(),
                     physical_voxel_size_xy_nm: row.res_x.toFloat(),
                     physical_voxel_size_z_nm: row.res_z.toFloat(),
+                    orig_meta: meta,
                 ]
                 tuple(row_meta, file(row.filepath))
             }
         }
 
-    // .toString().toBoolean() guards against the CLI handing this through
-    // as the String "false" (truthy in Groovy) when no params.config default
-    // exists yet to tell Nextflow's CLI parser the param's type is boolean.
+    
     if (params.deconvolution_with_gpu.toString().toBoolean()) {
-        ch_gpu_input = ch_deconwolf_input.map { meta, tif -> tuple(meta, tif, true) }
+        ch_gpu_input = ch_deconwolf_input.map { meta, tif -> tuple(meta, file(tif), true) }
         DECONWOLF_GPU(ch_gpu_input)
 
-        // Items DECONWOLF_GPU ignored (see modules/deconvolution/deconwolf)
-        // come through with no matching output — join with remainder to
-        // find them and retry on CPU.
         ch_cpu_input = ch_gpu_input
             .join(DECONWOLF_GPU.out.deconvolved, remainder: true)
             .filter { _meta, _tif, _gpu, deconvolved -> deconvolved == null }
-            .map { meta, tif, _gpu, _deconvolved -> tuple(meta, tif, false) }
+            .map { meta, tif, _gpu, _deconvolved -> tuple(meta, file(tif), false) }
         DECONWOLF_CPU(ch_cpu_input)
 
         ch_deconvolved = DECONWOLF_GPU.out.deconvolved.mix(DECONWOLF_CPU.out.deconvolved)
     } else {
-        ch_cpu_input = ch_deconwolf_input.map { meta, tif -> tuple(meta, tif, false) }
+        ch_cpu_input = ch_deconwolf_input.map { meta, tif -> tuple(meta, file(tif), false) }
         DECONWOLF_CPU(ch_cpu_input)
         ch_deconvolved = DECONWOLF_CPU.out.deconvolved
     }
 
-    // Regroup by (dataset_id, scene) so every channel/time point belonging to
-    // one scene lands in a single OME-Zarr — the inverse of convert_to_tif's
-    // per-channel/per-timepoint fan-out. Voxel size is constant within a
-    // group (all images in one run share microscope settings), so any one
-    // member's meta carries it forward for the whole group.
     ch_ome_zarr_input = ch_deconvolved
         .map { meta, tif ->
-            def group_key = [meta.id, meta.scene ?: 0]
-            def item = [channel_index: meta.channel_index, time_index: meta.time_index, 
-                        emission: meta.emission]
-            tuple(group_key, meta, item, tif)
+            def group_key = [meta.id, meta.channel_index, meta.scene ?: 0]
+            tuple(group_key, meta, tif)
         }
         .groupTuple(by: 0)
-        .map { group_key, metas, items, tifs ->
-            def group_meta = [
+        .map { group_key, metas, tifs ->
+            def task_meta = [
                 id: group_key[0],
-                scene: group_key[1],
+                channel_index: group_key[1],
+                scene: group_key[2],
                 physical_voxel_size_xy_nm: metas[0].physical_voxel_size_xy_nm,
                 physical_voxel_size_z_nm: metas[0].physical_voxel_size_z_nm,
+                orig_meta: metas[0].orig_meta,
             ]
-            tuple(group_meta, items, tifs)
+            tuple(task_meta, file(tifs))
         }
     CONVERT_TO_OME_ZARR(ch_ome_zarr_input)
 
     emit:
-    ome_zarr = CONVERT_TO_OME_ZARR.out.ome_zarr
+    ome_zarr = CONVERT_TO_OME_ZARR.out.ome_zarr.map { meta, zarr -> tuple(meta.orig_meta, file(zarr)) }
 }
