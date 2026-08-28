@@ -20,10 +20,14 @@ from `meta.id`, which stays the plain dataset id), plus
 - **CPU-only:** every row runs directly through `DECONWOLF_CPU`
   (`gpu = false`), no GPU attempt, no fallback.
 
-Deconvolved tifs are then regrouped by `(meta.id, meta.scene ?: 0)` — the
-inverse of `convert_to_tif`'s per-channel/per-timepoint fan-out — so every
-channel/time point belonging to one scene is combined by
-`convert_to_ome_zarr` into a single CZYX (or TCZYX) OME-Zarr image.
+Deconvolved tifs are then regrouped by
+`(meta.id, meta.channel_index, meta.scene ?: 0)` — the inverse of
+`convert_to_tif`'s per-timepoint fan-out for a given channel — so every
+time point belonging to one channel/scene is combined by
+`convert_to_ome_zarr` into a single ZYX (or TZYX, when more than one time
+point is present) OME-Zarr image. Each channel of a multi-channel dataset
+is written as its own OME-Zarr image — channels are never combined into a
+single CZYX/TCZYX file.
 
 **Status:** all three stages are wired in, including the GPU/CPU branch,
 the GPU→CPU fallback, and the channel/scene regrouping ahead of

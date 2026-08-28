@@ -70,7 +70,7 @@ workflow DECONVOLUTION {
                 physical_voxel_size_z_nm: metas[0].physical_voxel_size_z_nm,
                 orig_meta: metas[0].orig_meta,
             ]
-            tuple(task_meta, file(tifs))
+            tuple(task_meta, tifs)
         }
     CONVERT_TO_OME_ZARR(ch_ome_zarr_input)
 
