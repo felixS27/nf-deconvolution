@@ -6,8 +6,8 @@
  * Emission wavelength (meta.emission), z-plane count (meta.dim_z), and
  * pixel size (meta.physical_voxel_size_xy_nm/_z_nm) all stay per-image —
  * sourced from the convert_to_tif manifest (xy assumes square pixels,
- * so the manifest's res_y is not used). NA, ni, iterations, tile size,
- * and boundary quality are shared across the run and come from params.
+ * so the manifest's res_y is not used). NA, ni, iterations, and tile
+ * size are shared across the run and come from params.
  * GPU/CPU mode is a third tuple input
  * (gpu), not a meta key or global param, so the subworkflow can retry a
  * failed GPU attempt on CPU by re-invoking with gpu = false — the retry
@@ -16,6 +16,12 @@
  * race on deconwolf's cache directory. meta.internal_id (set by the
  * subworkflow to distinguish per-channel/time/scene rows sharing one
  * meta.id) is used for tag when present, falling back to meta.id.
+ * --float, --bq, and --scale are flat, run-level dw output-shaping
+ * flags rather than per-image/validated inputs, so they're sourced from
+ * task.ext (set per-process via a withName: 'DECONWOLF' config block),
+ * not params: ext.float defaults to false (flag omitted), ext.bq
+ * defaults to 2, and ext.scale is only passed through when > 0
+ * (0/negative/unset all omit --scale silently).
  * On gpu=true, a failure with an OOM/timeout-shaped exit status is
  * retried (same resources — nextflow.config doesn't exist yet to scale
  * memory/time per task.attempt; TODO once it does) up to maxRetries,
@@ -51,6 +57,9 @@ process DECONWOLF {
     def gpu_args  = gpu ? "--gpu" : "--threads ${task.cpus}"
     def tile_args = params.deconvolution_tile_size ? "--tilesize ${params.deconvolution_tile_size}" : ""
     def nslice    = meta.dim_z
+    def float_flag = task.ext.float ? '--float' : ''
+    def bq         = task.ext.bq != null ? task.ext.bq : 2
+    def scale_flag = (task.ext.scale && task.ext.scale > 0) ? "--scale ${task.ext.scale}" : ''
     """
     ${gpu_diagnostics}
 
@@ -72,7 +81,9 @@ process DECONWOLF {
         --iter ${params.deconvolution_iter} \\
         ${gpu_args} \\
         ${tile_args} \\
-        --bq ${params.deconvolution_bq} \\
+        --bq ${bq} \\
+        ${float_flag} \\
+        ${scale_flag} \\
         --overwrite \\
         --tempdir \$PWD \\
         --out \$PWD \\
