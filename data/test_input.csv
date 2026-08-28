@@ -1,0 +1,4 @@
+image_id,emission,channel_index,path,time_indices,scene
+3d_test,420,0,data/3d_test_image.ome.tif,,
+multi_channel_test,420,0,data/5d_test_image.ome.zarr,,
+multi_channel_test,664,1,data/5d_test_image.ome.zarr,,
