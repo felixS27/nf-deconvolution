@@ -55,7 +55,7 @@ process DECONWOLF {
     }
     def gpu_diagnostics = gpu ?
         'echo "CUDA_VISIBLE_DEVICES=$CUDA_VISIBLE_DEVICES"\nnvidia-smi || echo "nvidia-smi unavailable"' : ""
-    def gpu_args  = gpu ? "--gpu" : "--threads ${task.cpus}"
+    def gpu_args  = gpu ? "--gpu" : ""
     def tile_args = params.deconvolution_tile_size ? "--tilesize ${params.deconvolution_tile_size}" : ""
     def nslice    = "--nslice ${meta.dim_z}"
     def float_flag = task.ext.float ? '--float' : ''
@@ -66,7 +66,9 @@ process DECONWOLF {
 
     export XDG_CONFIG_HOME=\$PWD/.config
     mkdir -p \$XDG_CONFIG_HOME/deconwolf
-    trap 'rm -f PSF* fftw_*; rm -rf "\$XDG_CONFIG_HOME"' EXIT
+    DW_TMP=""
+    trap 'rm -rf "\$DW_TMP"; rm -f PSF* fftw_*; rm -rf "\$XDG_CONFIG_HOME"' EXIT
+    DW_TMP=\$(mktemp -d -p /tmp dw_tmp.XXXXXX)
 
     dw_bw \\
         --resxy ${meta.physical_voxel_size_xy_nm} \\
@@ -81,12 +83,13 @@ process DECONWOLF {
     dw \\
         --iter ${params.deconvolution_iter} \\
         ${gpu_args} \\
+        --threads ${task.cpus} \\
         ${tile_args} \\
         ${bq} \\
         ${float_flag} \\
         ${scale_flag} \\
         --overwrite \\
-        --tempdir \$PWD \\
+        --tempdir "\$DW_TMP" \\
         --out \$PWD \\
         ${image} \\
         PSF.tif
